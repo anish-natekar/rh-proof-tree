@@ -361,11 +361,23 @@ def main():
             parents_all.extend(p)
             if n % 20000 == 0:
                 print(f"  pass2 {n}", file=sys.stderr)
-    print(f"edges {len(src_all)}", file=sys.stderr)
+    print(f"edges {len(src_all)} (raw)", file=sys.stderr)
+
+    # Noise filter. A top-level decl with a single-token name (`hm`, `first`, `key`, `e1`) is
+    # indistinguishable, by text alone, from a local hypothesis / tactic / binder of the same name
+    # in some other file. Keep such a mention only inside the declaring module.
+    src_a = np.array(src_all, dtype=np.int32)
+    dst_a = np.array(dst_all, dtype=np.int32)
+    mod_a = np.array(mods_col, dtype=np.int32)
+    single = np.array(["." not in x for x in names], dtype=bool)
+    drop = single[dst_a] & (mod_a[src_a] != mod_a[dst_a])
+    print(f"noise filter: dropped {int(drop.sum())} cross-module edges to single-token names "
+          f"({int(single.sum())} such decls)", file=sys.stderr)
+    src_a, dst_a = src_a[~drop], dst_a[~drop]
+    print(f"edges {len(src_a)}", file=sys.stderr)
 
     os.makedirs(OUT, exist_ok=True)
-    np.savez_compressed(os.path.join(OUT, "edges.npz"),
-                        src=np.array(src_all, dtype=np.int32), dst=np.array(dst_all, dtype=np.int32))
+    np.savez_compressed(os.path.join(OUT, "edges.npz"), src=src_a, dst=dst_a)
     with gzip.open(os.path.join(OUT, "decls.json.gz"), "wt", encoding="utf-8") as f:
         json.dump({
             "names": names, "kinds": kinds, "mod": mods_col, "line": lines, "nl": nls,

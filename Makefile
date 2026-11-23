@@ -19,13 +19,17 @@ out/decls.json.gz out/edges.npz: out/modules.jsonl.gz scripts/extract_decls.py
 out/route.json: out/decls.json.gz out/edges.npz scripts/build_route.py
 	python3 scripts/build_route.py
 
-out/rh-proof-tree.html: out/tree.json out/route.json web/template.html scripts/render_html.py
+out/graph.json: out/decls.json.gz out/edges.npz out/route.json scripts/build_graph.py
+	python3 scripts/build_graph.py
+
+out/rh-proof-tree.html: out/tree.json out/route.json web/template.html web/graph.js web/graph.css scripts/render_html.py
 	python3 scripts/render_html.py
 
-site: out/rh-proof-tree.html
-	mkdir -p docs
+site: out/rh-proof-tree.html out/graph.json
+	mkdir -p docs/data
 	cp out/rh-proof-tree.html docs/index.html
+	cp out/graph.json docs/data/graph.json
 	touch docs/.nojekyll
 
 clean:
-	rm -rf out docs/index.html
+	rm -rf out docs/index.html docs/data

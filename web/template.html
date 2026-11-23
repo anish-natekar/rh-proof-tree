@@ -81,6 +81,7 @@ a.ext{color:var(--accent)}
   main{grid-template-columns:1fr;height:auto}
   .pane.left,#tree{max-height:55vh;border-right:0;border-bottom:1px solid var(--line)}
 }
+/*__GRAPH_CSS__*/
 </style>
 </head>
 <body>
@@ -96,18 +97,41 @@ a.ext{color:var(--accent)}
     This is an unofficial, independent reading aid. It is not affiliated with the proof's authors, Anthropic, or the Lean community.
   </div>
   <div class="tabs">
+    <button data-tab="graph">Graph</button>
     <button data-tab="route" class="on">Proof route</button>
     <button data-tab="folders">Folders</button>
     <button data-tab="structs">Structures</button>
   </div>
   <div class="bar">
-    <input type="search" id="q" placeholder="Search" autocomplete="off">
+    <input type="search" id="q" class="not-graph" placeholder="Search" autocomplete="off">
     <label class="only-folders">Sort <select id="sort"><option value="loc">size</option><option value="dist">proof depth</option><option value="name">name</option></select></label>
     <button class="only-folders" id="goMain" title="Select the Main module">Start at Main</button>
-    <button id="collapse">Collapse all</button>
+    <button id="collapse" class="not-graph">Collapse all</button>
     <button id="theme" title="Toggle light/dark">Theme</button>
   </div>
 </header>
+<main id="v-graph" hidden>
+  <div id="gwrap">
+    <canvas id="gcv" tabindex="0" aria-label="Interactive dependency graph of the proof"></canvas>
+    <div id="gstatus"></div>
+    <div class="gbar">
+      <div class="gsearch"><input type="search" id="gsearch" placeholder="Find a folder or module  ( / )" autocomplete="off"><div class="gres" id="gres" hidden></div></div>
+      <button id="greset" title="Fit everything">Reset view</button>
+      <button id="gcollapse" title="Close all opened clusters">Collapse all</button>
+      <label class="gbox">Colour <select id="gmode"><option value="origin">proof depth</option><option value="theory">theory area</option></select></label>
+      <label class="gbox">Edges <input type="range" id="gedges" min="1.7" max="4.3" step="0.05" value="3.4"></label>
+      <button id="gabtn" title="What am I looking at, and what are the limits?">About</button>
+      <span class="gbox" id="gstat"></span>
+    </div>
+    <div id="gabout" hidden>
+      <b>What this is.</b> Each dot is a folder of the Lean source, packed so that clusters that lean on each other sit next to each other, with the five <code>Main</code> theorems in the centre. Colour shows <i>proof depth</i> (fewest steps from <code>Main</code>) or theory. Zoom in or double-click a dot to open it. Lines are aggregated "mentions" between clusters; click a dot to see what it uses and what uses it.
+      <br><b>Limits.</b> Static text parse, not a Lean check: edges are name mentions (approximate). It is a reading aid, not a verification of the proof.
+    </div>
+    <div id="glegend"></div>
+    <aside id="gpanel" hidden></aside>
+    <div id="gtip" hidden></div>
+  </div>
+</main>
 <main id="v-route">
   <section class="pane left" id="rtree" aria-label="Proof route"></section>
   <aside class="pane" id="rdetail" style="padding:14px 16px 40px;background:var(--panel)"></aside>
@@ -288,16 +312,19 @@ a.ext{color:var(--accent)}
   function srcLink(mod, line){ return '<a class="ext" href="'+gh(mod,line)+'" target="_blank" rel="noopener noreferrer">'+esc(mod)+':'+line+'</a>'; }
 
   // ---------------------------------------------------------------- tabs
-  var views = {route:'v-route', folders:'v-folders', structs:'v-structs'};
-  var holders = {route:'Search declaration name, e.g. everyCharacter', folders:'Search module path, e.g. CharacterBoxes', structs:'Search structure name'};
+  var views = {graph:'v-graph', route:'v-route', folders:'v-folders', structs:'v-structs'};
+  var holders = {graph:'', route:'Search declaration name, e.g. everyCharacter', folders:'Search module path, e.g. CharacterBoxes', structs:'Search structure name'};
   RH.showTab = function(t){
     RH.tab = t;
+    document.querySelectorAll('.not-graph').forEach(function(e){ e.hidden = (t==='graph'); });
+    document.querySelector('.note').hidden = (t==='graph');
     Object.keys(views).forEach(function(k){ document.getElementById(views[k]).hidden = (k!==t); });
     document.querySelectorAll('.tabs button').forEach(function(b){ b.classList.toggle('on', b.dataset.tab===t); });
     document.querySelectorAll('.only-folders').forEach(function(e){ e.hidden = (t!=='folders'); });
     qEl.placeholder = holders[t]; qEl.value = '';
     renderRoute(); renderStructs(); if (RH.resetFolders) RH.resetFolders();
     window.dispatchEvent(new Event('resize'));
+    if (t==='graph' && window.RHGraph) window.RHGraph.show();
   };
   document.querySelector('.tabs').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (b) RH.showTab(b.dataset.tab);
@@ -497,6 +524,9 @@ a.ext{color:var(--accent)}
   renderRoute(); rDetail(-1);
   RH.showTab('route');
 })();
+</script>
+<script>
+/*__GRAPH_JS__*/
 </script>
 </body>
 </html>

@@ -29,6 +29,7 @@ site: out/rh-proof-tree.html out/graph.json
 	mkdir -p docs/data
 	cp out/rh-proof-tree.html docs/index.html
 	cp out/graph.json docs/data/graph.json
+	rm -rf docs/data/k && cp -r out/k docs/data/k
 	touch docs/.nojekyll
 
 clean:

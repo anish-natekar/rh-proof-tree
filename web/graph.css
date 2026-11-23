@@ -32,3 +32,10 @@
 #gabout{position:absolute;left:10px;top:52px;z-index:5;max-width:min(560px,calc(100% - 20px));background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #gabout[hidden]{display:none}
 @media (max-width:820px){#gpanel{top:auto;height:46%;bottom:0;right:0;width:100%;border-radius:12px 12px 0 0}#glegend{display:none}}
+#gkeys h3{font-size:12px;margin:10px 0 4px;color:var(--mute);text-transform:uppercase;letter-spacing:.03em}
+#gkeys .kd{padding:5px 0;border-bottom:1px solid var(--line)}
+#gkeys .kn{word-break:break-all}
+#gkeys .kdoc{font-style:italic;margin:2px 0;color:var(--ink)}
+#gkeys .kst{cursor:pointer}
+#gkeys pre.ksrc{margin:5px 0 0;padding:6px 8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:auto;font-size:11.5px;line-height:1.4;max-height:220px;white-space:pre;tab-size:2}
+#gkeys pre.ksrc[hidden]{display:none}

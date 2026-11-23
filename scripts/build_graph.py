@@ -402,6 +402,60 @@ NR = np.where(LR <= 60, LR, 60 * (LR / 60) ** 0.6)
 NR = np.where([bool(kids.get(i)) for i in range(NN)], NR, LEAFR)
 NR[MAIN] = 12.0
 
+# ---------------------------------------------------------------- key declarations per cluster
+# top-K reachable declarations (by how often other reachable declarations mention them), documented ones
+# always first; shipped in per-theory shards that the viewer loads when a cluster is selected.
+KEYK = 6
+indeg = np.bincount(dst[reach[src]], minlength=n).astype(np.float64)
+line_ = np.array(D["line"])
+docs_ = {int(k): v for k, v in D["docs"].items()}
+score = np.where(reach, indeg, -1.0)
+for k_ in docs_:
+    if reach[k_]:
+        score[k_] += 1e9
+main_mod = mods.index("Main") if "Main" in mods else -1
+score[(mod == main_mod) & reach] += 1e8
+cand = np.where(reach)[0]
+leaf = leaf_of_mod[mod[cand]]
+o_ = np.lexsort((-score[cand], leaf))
+cand, leaf = cand[o_], leaf[o_]
+top = collections.defaultdict(list)
+cnt = collections.Counter()
+for d_, l_ in zip(cand.tolist(), leaf.tolist()):
+    if l_ < 0 or cnt[l_] >= KEYK:
+        continue
+    cnt[l_] += 1
+    top[l_].append(d_)
+for l in range(LEVEL_MAX, 1, -1):
+    for i in np.where(LV == l)[0]:
+        pa = int(P[i])
+        if pa >= 0:
+            top[pa] = sorted(set(top[pa]) | set(top[int(i)]), key=lambda d_: -score[d_])[:KEYK]
+for i in np.where(LV == 1)[0]:  # level-1 nodes aggregate their children too (done above for l=2)
+    pass
+shards = {}
+for i, lst in top.items():
+    th_ = int(TH[i]) if i != MAIN else -1
+    mi = shards.setdefault(th_, {"m": [], "mi": {}, "n": {}})
+    rows = []
+    for d_ in lst:
+        mm_ = int(mod[d_])
+        if mm_ not in mi["mi"]:
+            mi["mi"][mm_] = len(mi["m"]); mi["m"].append(mods[mm_])
+        rows.append([names[d_], mi["mi"][mm_], int(line_[d_]), int(indeg[d_]), docs_.get(d_, 0), kinds[d_]])
+    mi["n"][str(i)] = rows
+kdir = os.path.join(OUT, "k")
+os.makedirs(kdir, exist_ok=True)
+for f_ in os.listdir(kdir):
+    os.remove(os.path.join(kdir, f_))
+tot_ = 0
+for th_, mi in shards.items():
+    path_ = os.path.join(kdir, ("main" if th_ < 0 else str(th_)) + ".json")
+    with open(path_, "w") as f:
+        json.dump({"m": mi["m"], "n": mi["n"]}, f, ensure_ascii=False, separators=(",", ":"))
+    tot_ += os.path.getsize(path_)
+print("key-decl shards", len(shards), tot_ // 1024, "KB")
+
 # ---------------------------------------------------------------- write
 order_e = np.argsort(-EW, kind="stable")
 meta = {

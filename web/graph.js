@@ -352,7 +352,7 @@
     h += '<h2>' + (i === MAIN ? 'Main (the five RH theorems)' : esc(FULL[i])) + '</h2>';
     h += '<div class="sub2">' + fmt(WGT[i]) + ' declarations reachable from Main · ' + fmt(WTOT[i]) + ' in these modules · proof depth ' + (MD[i] < 0 ? '–' : MD[i] + ' (mean ' + DS[i] + ')') + '</div>';
     h += kmix(i);
-    h += '<div class="btns">';
+    h += '<div id="gkeys"></div><div class="btns">';
     if (KIDS[i].length && !expanded[i]) h += '<button id="gexp">Expand (' + KIDS[i].length + ')</button>';
     if (expanded[i] || (PAR[i] >= 0 && expanded[PAR[i]] && LV[i] > 1)) h += '<button id="gcol">Collapse</button>';
     h += '<button id="gfly">Zoom to</button></div>';
@@ -362,6 +362,52 @@
       h += listNb('Uses (depends on)', uses, 'b') + listNb('Used by', usedBy, 'a');
     } else h += '<div class="sub2" style="margin-top:8px">No edges to other visible clusters.</div>';
     panelEl.innerHTML = h;
+    loadKeys(i);
+  }
+  // ---- key declarations: docstring (if the source has one) + statement fetched on demand from GitHub at the pinned commit
+  var GH = 'Deicyde/riemann-hypothesis', shardCache = {}, srcCache = {};
+  function shard(i) {
+    var key = i === MAIN ? 'main' : String(TH[i]);
+    if (!shardCache[key]) shardCache[key] = fetch('data/k/' + key + '.json').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    return shardCache[key];
+  }
+  function loadKeys(i) {
+    var box = $('gkeys'); if (!box) return;
+    box.innerHTML = '<div class="sub2">Loading key declarations…</div>';
+    shard(i).then(function (sh) {
+      if (sel !== i) return;
+      var rows = sh.n[String(i)]; box = $('gkeys'); if (!box) return;
+      if (!rows || !rows.length) { box.innerHTML = ''; return; }
+      box.innerHTML = '<h3>Key declarations · most used</h3>' + rows.map(function (r, q) {
+        var mod = sh.m[r[1]];
+        return '<div class="kd" data-q="' + q + '"><div class="kn"><b>' + esc(r[0]) + '</b> <span class="sub2">' + esc(r[5]) + (r[3] ? ' · used by ' + fmt(r[3]) : '') + '</span></div>' +
+          (r[4] ? '<div class="kdoc">' + esc(r[4]) + '</div>' : '') +
+          '<div class="sub2">' + esc(mod) + ':' + r[2] + ' · <a class="lnk kst" data-q="' + q + '">statement</a> · <a class="lnk" target="_blank" rel="noopener noreferrer" href="' + ghUrl(mod, r[2]) + '">GitHub ↗</a></div><pre class="ksrc" hidden></pre></div>';
+      }).join('');
+      box.onclick = function (e) {
+        var t = e.target; if (!t.classList || !t.classList.contains('kst')) return;
+        var kd = t.closest('.kd'), pre = kd.querySelector('.ksrc'), r = rows[+t.dataset.q];
+        if (!pre.hidden) { pre.hidden = true; return; }
+        pre.hidden = false; pre.textContent = 'Loading source…';
+        fetchSource(sh.m[r[1]]).then(function (txt) { pre.textContent = statement(txt, r[2]); }).catch(function () { pre.textContent = 'Could not fetch the source from GitHub (offline, or the file is missing at this commit).'; });
+      };
+    }).catch(function () { var b = $('gkeys'); if (b) b.innerHTML = ''; });
+  }
+  function modPath(mod) { return 'src/' + mod.split('.').join('/') + '.lean'; }
+  function ghUrl(mod, line) { return 'https://github.com/' + GH + '/blob/' + SHA + '/' + modPath(mod) + '#L' + line; }
+  function fetchSource(mod) {
+    if (!srcCache[mod]) srcCache[mod] = fetch('https://raw.githubusercontent.com/' + GH + '/' + SHA + '/' + modPath(mod)).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
+    return srcCache[mod];
+  }
+  // from the declaration's first line to the end of its statement (first line with ':=' / 'where', blank line or 14 lines)
+  function statement(txt, line) {
+    var L = txt.split('\n'), out = [], a = Math.max(0, line - 1);
+    for (var j = a; j < L.length && out.length < 14; j++) {
+      if (j > a && !L[j].trim()) break;
+      out.push(L[j]);
+      if (/(:=|\bwhere\b)/.test(L[j])) break;
+    }
+    return out.join('\n');
   }
   function listNb(title, arr, side) {
     if (!arr.length) return '';

@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RH Proof Tree</title>
+<style>
+:root{
+  --bg:#fafaf7; --panel:#ffffff; --ink:#1c1b19; --mute:#6b6862; --line:#e4e1d8;
+  --accent:#2a5bd7; --accent-bg:#e8eefc; --bar:#c9d6f5; --warn-bg:#fff6dd; --warn-line:#e3c566;
+  --d0:#1f7a4d; --d1:#2a5bd7; --d2:#8a4fd1; --d3:#c2570c;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14130f; --panel:#1c1b17; --ink:#ece9e1; --mute:#9a968c; --line:#2f2d26;
+    --accent:#7ea3ff; --accent-bg:#232c45; --bar:#2c3a63; --warn-bg:#2b2410; --warn-line:#6b5a1e;
+    --d0:#4cc58a; --d1:#7ea3ff; --d2:#b98cf0; --d3:#f0944d;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14130f; --panel:#1c1b17; --ink:#ece9e1; --mute:#9a968c; --line:#2f2d26;
+  --accent:#7ea3ff; --accent-bg:#232c45; --bar:#2c3a63; --warn-bg:#2b2410; --warn-line:#6b5a1e;
+  --d0:#4cc58a; --d1:#7ea3ff; --d2:#b98cf0; --d3:#f0944d;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+h1{font-size:16px;margin:0 0 4px}
+.stats{color:var(--mute);font-size:13px}
+.stats b{color:var(--ink);font-weight:600}
+.note{margin-top:8px;padding:8px 10px;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:6px;font-size:12.5px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+input[type=search],select,button{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+input[type=search]{flex:1;min-width:180px}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);height:calc(100% - var(--hh,150px))}
+#tree{overflow:auto;padding:8px 8px 40px;border-right:1px solid var(--line)}
+#detail{overflow:auto;padding:14px 16px 40px;background:var(--panel)}
+.row{display:flex;align-items:center;gap:6px;padding:2px 6px;border-radius:5px;cursor:pointer;white-space:nowrap;position:relative}
+.row:hover{background:var(--accent-bg)}
+.row.sel{background:var(--accent-bg);outline:1px solid var(--accent)}
+.tog{width:14px;text-align:center;color:var(--mute);flex:none;user-select:none}
+.nm{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sz{height:6px;flex:none;border-radius:3px;background:var(--bar)}
+.meta{color:var(--mute);font-size:12px;margin-left:auto;padding-left:10px;flex:none}
+.dist{font-size:11px;padding:0 6px;border-radius:9px;color:#fff;flex:none}
+.kids{margin-left:14px;border-left:1px dotted var(--line);padding-left:2px}
+h2{font-size:15px;margin:0 0 2px;word-break:break-all}
+.crumbs{font-size:12px;color:var(--mute);margin-bottom:10px;word-break:break-all}
+.crumbs a,.lnk{color:var(--accent);cursor:pointer;text-decoration:none}
+.crumbs a:hover,.lnk:hover{text-decoration:underline}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:10px 0 14px}
+.card{border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.card b{display:block;font-size:17px}
+.card span{font-size:11.5px;color:var(--mute)}
+h3{font-size:13px;margin:16px 0 6px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+ul.dep{list-style:none;margin:0;padding:0}
+ul.dep li{display:flex;gap:8px;padding:2px 0;border-bottom:1px solid var(--line)}
+ul.dep li .c{margin-left:auto;color:var(--mute);flex:none}
+ul.dep li .lnk{word-break:break-all}
+.empty{color:var(--mute);font-style:italic}
+code{font:12px ui-monospace,Menlo,Consolas,monospace}
+main[hidden],.only-folders[hidden]{display:none}
+.tabs{display:flex;gap:4px;margin-top:10px}
+.tabs button{border-radius:6px 6px 0 0}
+.tabs button.on{background:var(--accent-bg);border-color:var(--accent);font-weight:600}
+.kind{display:inline-block;width:16px;text-align:center;font:600 11px ui-monospace,Menlo,monospace;border-radius:3px;background:var(--line);color:var(--mute);flex:none}
+.kind.T,.kind.L{background:var(--accent-bg);color:var(--accent)}
+.kind.S,.kind.C{background:#e9dcf7;color:#6b34a8}
+.nsd{color:var(--mute);font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
+.row.cross .nm{opacity:.55;font-style:italic}
+.fbar{height:8px;border-radius:4px;background:var(--bar);margin-top:2px}
+.spark{display:flex;align-items:flex-end;gap:1px;height:34px;margin-top:6px}
+.spark i{display:block;flex:1;background:var(--bar);min-width:2px}
+.pane{overflow:auto}
+a.ext{color:var(--accent)}
+.sub2{color:var(--mute);font-size:12px}
+@media (max-width:820px){
+  main{grid-template-columns:1fr;height:auto}
+  .pane.left,#tree{max-height:55vh;border-right:0;border-bottom:1px solid var(--line)}
+}
+</style>
+</head>
+<body>
+<header id="hdr">
+  <h1>Riemann hypothesis Lean proof: tree of the source</h1>
+  <div class="stats" id="stats"></div>
+  <div class="note">
+    <b>Read this first.</b> Built by <b>static parse</b> of the source (no Lean compile). Names are real Lean module paths; nothing here is written by an AI.
+    <b>Folders</b>: "Depends on" counts <code>import</code> edges between modules, rolled up to the folder level. An import means <i>may use</i>, not <i>does use</i>.
+    <b>Proof route</b>: an edge A → B means A's text <i>mentions</i> the name B, resolved with namespaces and <code>open</code>. It misses uses through dot-notation, structure fields, instances and notation, and can pick a wrong same-named declaration (0.5% of names are declared twice). Treat it as a map, not a proof.
+    Counts come from keyword matching, so they are approximate. This view helps you navigate the proof. It does not verify it.
+    <br><b>Source:</b> <a class="ext" href="https://github.com/Deicyde/riemann-hypothesis/tree/__SHA__" target="_blank" rel="noopener noreferrer">Deicyde/riemann-hypothesis @ __SHA_SHORT__</a>, the community-maintained <code>main</code> branch, which is cleaned up and is <i>not</i> the original 175,187-module release.
+    This is an unofficial, independent reading aid. It is not affiliated with the proof's authors, Anthropic, or the Lean community.
+  </div>
+  <div class="tabs">
+    <button data-tab="route" class="on">Proof route</button>
+    <button data-tab="folders">Folders</button>
+    <button data-tab="structs">Structures</button>
+  </div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search" autocomplete="off">
+    <label class="only-folders">Sort <select id="sort"><option value="loc">size</option><option value="dist">proof depth</option><option value="name">name</option></select></label>
+    <button class="only-folders" id="goMain" title="Select the Main module">Start at Main</button>
+    <button id="collapse">Collapse all</button>
+    <button id="theme" title="Toggle light/dark">Theme</button>
+  </div>
+</header>
+<main id="v-route">
+  <section class="pane left" id="rtree" aria-label="Proof route"></section>
+  <aside class="pane" id="rdetail" style="padding:14px 16px 40px;background:var(--panel)"></aside>
+</main>
+<main id="v-folders" hidden>
+  <section id="tree" aria-label="Module tree"></section>
+  <aside id="detail" aria-live="polite"></aside>
+</main>
+<main id="v-structs" hidden>
+  <section class="pane left" id="stree" aria-label="Structures"></section>
+  <aside class="pane" id="sdetail" style="padding:14px 16px 40px;background:var(--panel)"></aside>
+</main>
+<script>window.RH = {tab: 'route'};</script>
+<script id="data" type="application/json">__DATA__</script>
+<script id="route" type="application/json">__ROUTE__</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('data').textContent);
+  var N = D.nodes, M = D.meta;
+  var NAME2ID = {}; N.forEach(function(n,i){ NAME2ID[n.name]=i; });
+  var open = {}, selected = -1, sortKey = 'loc';
+  var treeEl = document.getElementById('tree'), detEl = document.getElementById('detail');
+
+  function fmt(x){ return x>=1e6 ? (x/1e6).toFixed(1)+'M' : x>=1e4 ? (x/1e3).toFixed(0)+'k' : x>=1e3 ? (x/1e3).toFixed(1)+'k' : String(x); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function leaf(n){ return n.name.split('.').pop(); }
+  function distColor(d){ return d===null ? 'var(--mute)' : d<=3 ? 'var(--d0)' : d<=10 ? 'var(--d1)' : d<=20 ? 'var(--d2)' : 'var(--d3)'; }
+  function distBadge(n){ return n.dist===null ? '' : '<span class="dist" style="background:'+distColor(n.dist)+'" title="Shortest import chain from Main">d'+n.dist+'</span>'; }
+
+  document.getElementById('stats').innerHTML =
+    '<b>'+M.modules.toLocaleString()+'</b> modules · <b>'+fmt(M.loc)+'</b> lines · <b>'+M.decls.toLocaleString()+'</b> declarations · <b>'+M.edges.toLocaleString()+'</b> internal imports · <b>'+M.reachable.toLocaleString()+'</b> reachable from <code>Main</code> · longest import chain from Main: <b>'+M.maxdist+'</b>';
+
+  function sorted(ids){
+    var a = ids.slice();
+    if (sortKey==='name') a.sort(function(x,y){ return N[x].name.localeCompare(N[y].name); });
+    else if (sortKey==='dist') a.sort(function(x,y){ var dx=N[x].dist===null?999:N[x].dist, dy=N[y].dist===null?999:N[y].dist; return dx-dy || N[y].loc-N[x].loc; });
+    else a.sort(function(x,y){ return N[y].loc-N[x].loc; });
+    return a;
+  }
+
+  function rowHTML(id, parentLoc){
+    var n = N[id], has = n.c.length>0;
+    var w = Math.max(2, Math.round(60 * n.loc / Math.max(parentLoc,1)));
+    return '<div class="row'+(id===selected?' sel':'')+'" data-id="'+id+'">' +
+      '<span class="tog">'+(has ? (open[id]?'▾':'▸') : '·')+'</span>' +
+      '<span class="nm" title="'+esc(n.name)+'">'+esc(leaf(n))+'</span>' +
+      '<span class="sz" style="width:'+w+'px"></span>' + distBadge(n) +
+      '<span class="meta">'+n.n.toLocaleString()+' mod · '+fmt(n.th)+' thm</span></div>';
+  }
+
+  function branch(ids, parentLoc){
+    var h = '';
+    sorted(ids).forEach(function(id){
+      h += rowHTML(id, parentLoc);
+      if (open[id] && N[id].c.length){
+        h += '<div class="kids">' + branch(N[id].c, N[id].loc) + '</div>';
+      }
+    });
+    return h;
+  }
+
+  function total(){ return D.roots.reduce(function(s,i){return s+N[i].loc;},0); }
+  function render(){
+    var st = treeEl.scrollTop;
+    treeEl.innerHTML = branch(D.roots, total());
+    treeEl.scrollTop = st;
+  }
+
+  function ancestors(id){ var a=[]; while (N[id].p!==-1){ id=N[id].p; a.unshift(id);} return a; }
+  function reveal(id){ ancestors(id).forEach(function(a){ open[a]=true; }); }
+
+  function link(id){ return '<a class="lnk" data-go="'+id+'">'+esc(N[id].name)+'</a>'; }
+  function depList(list, total){
+    if (!list.length) return '<div class="empty">none inside the project</div>';
+    return '<ul class="dep">' + list.map(function(p){
+      return '<li>'+link(p[0])+'<span class="c">'+p[1].toLocaleString()+'</span></li>';
+    }).join('') + '</ul>' + (total>list.length ? '<div class="empty">+ '+(total-list.length)+' more</div>' : '');
+  }
+
+  function detail(id){
+    if (id<0){ detEl.innerHTML='<div class="empty">Click a folder in the tree.</div>'; return; }
+    var n = N[id];
+    var crumbs = ancestors(id).map(function(a){ return '<a data-go="'+a+'">'+esc(leaf(N[a]))+'</a>'; }).concat([esc(leaf(n))]).join(' › ');
+    var h = '<h2>'+esc(n.name)+'</h2><div class="crumbs">'+crumbs+'</div>';
+    h += '<div class="grid">' +
+      '<div class="card"><b>'+n.n.toLocaleString()+'</b><span>modules</span></div>' +
+      '<div class="card"><b>'+fmt(n.loc)+'</b><span>lines</span></div>' +
+      '<div class="card"><b>'+n.th.toLocaleString()+'</b><span>theorems/lemmas</span></div>' +
+      '<div class="card"><b>'+n.df.toLocaleString()+'</b><span>defs</span></div>' +
+      '<div class="card"><b>'+n.st.toLocaleString()+'</b><span>structures/classes</span></div>' +
+      '<div class="card"><b>'+(n.dist===null?'—':n.dist)+'</b><span>proof depth from Main</span></div>' +
+      '</div>';
+    if (n.dist===null) h += '<div class="empty">No module here is reachable from Main by imports.</div>';
+    else h += '<div class="empty">'+n.reach.toLocaleString()+' of '+n.n.toLocaleString()+' modules here are reachable from Main.</div>';
+    h += '<h3>Depends on (imports)</h3>' + depList(n.out, n.nout);
+    h += '<h3>Used by (imported by)</h3>' + depList(n.inn, n.nin);
+    if (n.top && n.top.length){
+      h += '<h3>Largest modules by theorem count</h3><ul class="dep">' + n.top.map(function(t){
+        return '<li><code>'+esc(t[0].slice(n.name.length+1)||t[0])+'</code><span class="c">'+t[2]+' thm · '+t[1]+' loc</span></li>';
+      }).join('') + '</ul>';
+    }
+    if (n.c.length){
+      h += '<h3>Children</h3><ul class="dep">' + sorted(n.c).slice(0,40).map(function(c){
+        return '<li>'+link(c)+'<span class="c">'+N[c].n.toLocaleString()+' mod</span></li>';
+      }).join('') + '</ul>' + (n.c.length>40 ? '<div class="empty">+ '+(n.c.length-40)+' more, in the tree</div>' : '');
+    }
+    detEl.innerHTML = h;
+  }
+
+  function select(id, scroll){
+    selected = id; reveal(id); render(); detail(id);
+    if (scroll){
+      var el = treeEl.querySelector('.row[data-id="'+id+'"]');
+      if (el) el.scrollIntoView({block:'center'});
+    }
+  }
+
+  treeEl.addEventListener('click', function(e){
+    var r = e.target.closest('.row'); if (!r) return;
+    var id = +r.dataset.id;
+    if (e.target.classList.contains('tog') || selected===id){ if (N[id].c.length) open[id] = !open[id]; }
+    else if (N[id].c.length && !open[id]) open[id] = true;
+    selected = id; render(); detail(id);
+  });
+  detEl.addEventListener('click', function(e){
+    var a = e.target.closest('[data-go]'); if (a) select(+a.dataset.go, true);
+  });
+
+  // search
+  var qEl = document.getElementById('q'), timer;
+  qEl.addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(doSearch, 150); });
+  window.RH.selectFolder = function(name){
+    var id = NAME2ID[name.split('.').slice(0,4).join('.')];
+    if (id !== undefined){ window.RH.showTab('folders'); select(id, true); }
+  };
+  window.RH.resetFolders = function(){ qEl.value=''; render(); };
+  function doSearch(){
+    if (window.RH.tab !== 'folders') return;
+    var q = qEl.value.trim().toLowerCase();
+    if (!q){ render(); return; }
+    var hits = [];
+    for (var i=0;i<N.length && hits.length<200;i++) if (N[i].name.toLowerCase().indexOf(q)!==-1) hits.push(i);
+    hits.sort(function(a,b){ return N[b].loc-N[a].loc; });
+    treeEl.innerHTML = '<div class="empty" style="padding:6px">'+hits.length+(hits.length===200?'+':'')+' match(es), largest first. Click one to jump to it in the tree.</div>' +
+      hits.map(function(id){ return '<div class="row" data-hit="'+id+'"><span class="nm" title="'+esc(N[id].name)+'">'+esc(N[id].name)+'</span>'+distBadge(N[id])+'<span class="meta">'+N[id].n.toLocaleString()+' mod</span></div>'; }).join('');
+  }
+  treeEl.addEventListener('click', function(e){
+    var r = e.target.closest('[data-hit]'); if (!r) return;
+    qEl.value=''; select(+r.dataset.hit, true);
+  }, true);
+
+  document.getElementById('sort').addEventListener('change', function(e){ sortKey=e.target.value; render(); });
+  document.getElementById('collapse').addEventListener('click', function(){ if (window.RH.tab!=='folders') return; open={}; selected=-1; render(); detail(-1); });
+  document.getElementById('goMain').addEventListener('click', function(){ select(NAME2ID['Main'], true); });
+  document.getElementById('theme').addEventListener('click', function(){
+    var r=document.documentElement, cur=r.getAttribute('data-theme');
+    var dark = cur ? cur==='dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    r.setAttribute('data-theme', dark?'light':'dark');
+  });
+  function fit(){ document.documentElement.style.setProperty('--hh', document.getElementById('hdr').offsetHeight+'px'); }
+  window.addEventListener('resize', fit); fit();
+
+  render(); detail(-1);
+})();
+</script>
+<script>
+(function(){
+  var RH = window.RH;
+  var R = JSON.parse(document.getElementById('route').textContent);
+  var RN = R.nodes, RM = R.meta, MODS = R.mods;
+  var qEl = document.getElementById('q');
+  var KIND = {T:'theorem',L:'lemma',D:'def',A:'abbrev',S:'structure',C:'class',I:'inductive',N:'instance',X:'axiom',O:'opaque'};
+  function fmt(x){ return x>=1e6 ? (x/1e6).toFixed(1)+'M' : x>=1e4 ? (x/1e3).toFixed(0)+'k' : x>=1e3 ? (x/1e3).toFixed(1)+'k' : String(x); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function short(n){ var i=n.lastIndexOf('.'); return i<0 ? n : n.slice(i+1); }
+  function nsOf(n){ var i=n.lastIndexOf('.'); return i<0 ? '' : n.slice(0,i); }
+  function gh(mod, line){ return 'https://github.com/Deicyde/riemann-hypothesis/blob/'+RM.sha+'/src/'+mod.split('.').join('/')+'.lean#L'+line; }
+  function srcLink(mod, line){ return '<a class="ext" href="'+gh(mod,line)+'" target="_blank" rel="noopener noreferrer">'+esc(mod)+':'+line+'</a>'; }
+
+  // ---------------------------------------------------------------- tabs
+  var views = {route:'v-route', folders:'v-folders', structs:'v-structs'};
+  var holders = {route:'Search declaration name, e.g. everyCharacter', folders:'Search module path, e.g. CharacterBoxes', structs:'Search structure name'};
+  RH.showTab = function(t){
+    RH.tab = t;
+    Object.keys(views).forEach(function(k){ document.getElementById(views[k]).hidden = (k!==t); });
+    document.querySelectorAll('.tabs button').forEach(function(b){ b.classList.toggle('on', b.dataset.tab===t); });
+    document.querySelectorAll('.only-folders').forEach(function(e){ e.hidden = (t!=='folders'); });
+    qEl.placeholder = holders[t]; qEl.value = '';
+    renderRoute(); renderStructs(); if (RH.resetFolders) RH.resetFolders();
+    window.dispatchEvent(new Event('resize'));
+  };
+  document.querySelector('.tabs').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (b) RH.showTab(b.dataset.tab);
+  });
+
+  // ---------------------------------------------------------------- proof route
+  var rtree = document.getElementById('rtree'), rdet = document.getElementById('rdetail');
+  var rOpen = {}, rSelKey = null, rSearch = null;
+  var rParent = new Array(RN.length).fill(-1);
+  RN.forEach(function(n,i){ n.tree.forEach(function(c){ rParent[c] = i; }); });
+  var treeSets = {};
+  function isTreeChild(p, c){
+    var s = treeSets[p];
+    if (!s){ s = treeSets[p] = {}; RN[p].tree.forEach(function(x){ s[x]=1; }); }
+    return !!s[c];
+  }
+  function onPath(parentKey, id){ return parentKey!=='' && parentKey.split('/').indexOf(String(id))!==-1; }
+
+  function rRow(id, key, parent, cyc){
+    var n = RN[id], has = n.dep.length>0;
+    var cross = parent>=0 && !isTreeChild(parent, id);
+    return '<div class="row'+(cross?' cross':'')+(key===rSelKey?' sel':'')+'" data-key="'+key+'" data-id="'+id+'">'+
+      '<span class="tog">'+(cyc?'↻':has?(rOpen[key]?'▾':'▸'):'·')+'</span>'+
+      '<span class="kind '+n.k+'" title="'+KIND[n.k]+'">'+n.k+'</span>'+
+      '<span class="nm" title="'+esc(n.n)+'">'+esc(short(n.n))+'</span>'+
+      '<span class="nsd">'+esc(nsOf(n.n))+'</span>'+
+      '<span class="meta" title="first-found subtree size · used by">Σ'+fmt(n.sub)+' · ↑'+n.ub+'</span></div>';
+  }
+  function rBranch(ids, parentKey, parent){
+    var h = '';
+    ids.forEach(function(id){
+      var key = parentKey==='' ? String(id) : parentKey+'/'+id;
+      var cyc = onPath(parentKey, id);
+      h += rRow(id, key, parent, cyc);
+      if (rOpen[key] && !cyc && RN[id].dep.length) h += '<div class="kids">'+rBranch(RN[id].dep, key, id)+'</div>';
+    });
+    return h;
+  }
+  function intro(){
+    var mx = Math.max.apply(null, RM.levels);
+    var bars = RM.levels.map(function(v,i){ return '<i title="depth '+i+': '+v.toLocaleString()+' declarations" style="height:'+Math.max(2,Math.round(100*Math.sqrt(v/mx)))+'%"></i>'; }).join('');
+    return '<div style="padding:6px 8px 10px;border-bottom:1px solid var(--line);margin-bottom:6px">'+
+      '<div class="sub2">From the 5 theorems in <code>Main.lean</code>, following <b>name mentions</b>, '+RM.reach.toLocaleString()+' of '+RM.decls.toLocaleString()+' declarations ('+Math.round(100*RM.reach/RM.decls)+'%) are reachable, up to '+RM.maxdepth+' steps deep. '+
+      'Only the first '+RM.dmax+' steps ('+RM.embedded.toLocaleString()+' declarations) are shown. <b>Σ</b> = declarations first found through this one, <b>↑</b> = how many others mention it. '+
+      '<i>Faded italic rows</i> are links already reached by a shorter path elsewhere. ↻ marks a cycle.</div>'+
+      '<div class="spark">'+bars+'</div><div class="sub2">declarations first reached at each depth, 0 to '+RM.maxdepth+' (square-root scale)</div></div>';
+  }
+  function renderRoute(){
+    if (RH.tab!=='route') return;
+    var st = rtree.scrollTop;
+    if (rSearch){ rtree.innerHTML = rSearch; }
+    else rtree.innerHTML = intro() + rBranch(R.roots, '', -1);
+    rtree.scrollTop = st;
+  }
+  function chain(id){ var a=[]; while (id!==-1){ a.unshift(id); id = rParent[id]; } return a; }
+  function rLink(id){ return '<a class="lnk" data-go="'+id+'">'+esc(RN[id].n)+'</a>'; }
+  function rDetail(id){
+    if (id<0){ rdet.innerHTML = '<div class="empty">Click a declaration. It opens, and its details show here.</div>'; return; }
+    var n = RN[id], mod = MODS[n.m];
+    var h = '<h2>'+esc(n.n)+'</h2><div class="crumbs">'+KIND[n.k]+' · '+srcLink(mod, n.l)+' · <a class="lnk" data-folder="'+esc(mod)+'">show module in Folders</a></div>';
+    h += '<div class="grid">'+
+      '<div class="card"><b>'+n.d+'</b><span>steps from Main</span></div>'+
+      '<div class="card"><b>'+fmt(n.sub)+'</b><span>first found under it</span></div>'+
+      '<div class="card"><b>'+n.ub.toLocaleString()+'</b><span>mentioned by</span></div>'+
+      '<div class="card"><b>'+n.nl+'</b><span>lines</span></div></div>';
+    if (n.fo.length){
+      h += '<h3>What it pulls in, by folder</h3><ul class="dep">';
+      n.fo.forEach(function(f){
+        h += '<li style="display:block"><div style="display:flex;gap:8px"><a class="lnk" data-folder="'+esc(f[0])+'">'+esc(f[0])+'</a><span class="c">'+f[1].toLocaleString()+' · '+Math.round(100*f[1]/n.sub)+'%</span></div><div class="fbar" style="width:'+Math.max(2,Math.round(100*f[1]/n.sub))+'%"></div></li>';
+      });
+      h += '</ul>';
+    }
+    h += '<h3>Path from the theorem</h3><div class="crumbs">'+chain(id).map(function(c){ return c===id ? esc(short(RN[c].n)) : '<a data-go="'+c+'">'+esc(short(RN[c].n))+'</a>'; }).join(' › ')+'</div>';
+    h += '<h3>Mentions (direct)</h3>';
+    if (n.dep.length){
+      h += '<ul class="dep">'+n.dep.map(function(c){ return '<li><span class="kind '+RN[c].k+'">'+RN[c].k+'</span>'+rLink(c)+'<span class="c">Σ'+fmt(RN[c].sub)+'</span></li>'; }).join('')+'</ul>';
+    } else h += '<div class="empty">none shown in this view</div>';
+    if (n.more) h += '<div class="empty">+ '+n.more+' more mention(s) deeper than this view</div>';
+    rdet.innerHTML = h;
+  }
+  function rGo(id){
+    var key = '', ids = chain(id);
+    ids.forEach(function(c, i){ key = key==='' ? String(c) : key+'/'+c; if (i<ids.length-1) rOpen[key] = true; });
+    rSelKey = key; rSearch = null; qEl.value = '';
+    renderRoute(); rDetail(id);
+    var el = rtree.querySelector('.row[data-key="'+key+'"]');
+    if (el) el.scrollIntoView({block:'center'});
+  }
+  rtree.addEventListener('click', function(e){
+    var hit = e.target.closest('[data-hit]');
+    if (hit){ rGo(+hit.dataset.hit); return; }
+    var r = e.target.closest('.row'); if (!r) return;
+    var id = +r.dataset.id, key = r.dataset.key;
+    if (RN[id].dep.length && !r.querySelector('.tog').textContent.match('↻')){
+      if (e.target.classList.contains('tog') || rSelKey===key) rOpen[key] = !rOpen[key]; else rOpen[key] = true;
+    }
+    rSelKey = key; renderRoute(); rDetail(id);
+  });
+  rdet.addEventListener('click', function(e){
+    var g = e.target.closest('[data-go]'); if (g){ rGo(+g.dataset.go); return; }
+    var f = e.target.closest('[data-folder]'); if (f) RH.selectFolder(f.dataset.folder);
+  });
+
+  // ---------------------------------------------------------------- structures
+  var stree = document.getElementById('stree'), sdet = document.getElementById('sdetail');
+  var SN = R.structs.nodes, sKids = {}, sRoots = [], sOpen = {}, sSelKey = null, sQuery = '';
+  Object.keys(SN).forEach(function(k){
+    var n = SN[k], hasP = false;
+    n.p.forEach(function(p){ if (typeof p==='number' && SN[String(p)]){ (sKids[p] = sKids[p] || []).push(+k); hasP = true; } });
+    if (!hasP) sRoots.push(+k);
+  });
+  function descCount(id, seen){ var c=0; (sKids[id]||[]).forEach(function(k){ if(!seen[k]){ seen[k]=1; c += 1 + descCount(k, seen); } }); return c; }
+  var sDesc = {}; sRoots.forEach(function(r){ sDesc[r] = descCount(r, {}); });
+  sRoots.sort(function(a,b){ return (sDesc[b]-sDesc[a]) || SN[a].n.localeCompare(SN[b].n); });
+  function extParents(n){ return n.p.filter(function(p){ return typeof p==='string'; }); }
+  function sRow(id, key){
+    var n = SN[String(id)], kids = sKids[id] || [];
+    var ext = extParents(n);
+    return '<div class="row'+(key===sSelKey?' sel':'')+'" data-key="'+key+'" data-id="'+id+'">'+
+      '<span class="tog">'+(kids.length?(sOpen[key]?'▾':'▸'):'·')+'</span>'+
+      '<span class="kind '+n.k+'">'+n.k+'</span>'+
+      '<span class="nm" title="'+esc(n.n)+'">'+esc(short(n.n))+'</span>'+
+      '<span class="nsd">'+esc(nsOf(n.n))+'</span>'+
+      '<span class="meta">'+(ext.length?'⊂ '+esc(ext.slice(0,2).join(', ')):'')+(n.r?'':' · not reached')+'</span></div>';
+  }
+  function sBranch(ids, pk){
+    var h = '';
+    ids.forEach(function(id){
+      var key = pk==='' ? String(id) : pk+'/'+id;
+      if (pk!=='' && pk.split('/').indexOf(String(id))!==-1) return;
+      h += sRow(id, key);
+      if (sOpen[key] && sKids[id]) h += '<div class="kids">'+sBranch(sKids[id], key)+'</div>';
+    });
+    return h;
+  }
+  function renderStructs(){
+    if (RH.tab!=='structs') return;
+    var total = Object.keys(SN).length;
+    var head = '<div style="padding:6px 8px 10px;border-bottom:1px solid var(--line);margin-bottom:6px" class="sub2">'+
+      'The archive declares <b>'+RM.structures.toLocaleString()+'</b> structures and classes ('+RM.structures_reachable.toLocaleString()+' reachable from the main theorems). '+
+      'Only <b>'+RM.extends_relations+'</b> use <code>extends</code>, so the inheritance tree is shallow and most are standalone. This tab lists the <b>'+total+'</b> that take part in an <code>extends</code> relation. '+
+      'Parents shown as <code>⊂ Name</code> are Mathlib classes or names this parser could not resolve.</div>';
+    if (sQuery){
+      var hits = Object.keys(SN).filter(function(k){ return SN[k].n.toLowerCase().indexOf(sQuery)!==-1; }).slice(0,200);
+      stree.innerHTML = head + hits.map(function(k){ return sRow(+k, 'x'+k); }).join('');
+    } else stree.innerHTML = head + sBranch(sRoots, '');
+  }
+  function sDetail(id){
+    var n = SN[String(id)];
+    var h = '<h2>'+esc(n.n)+'</h2><div class="crumbs">'+KIND[n.k]+' · '+srcLink(n.m, n.l)+' · <a class="lnk" data-folder="'+esc(n.m)+'">show module in Folders</a>'+(n.r?'':' · not reachable from Main by name mention')+'</div>';
+    h += '<h3>Extends</h3>';
+    if (n.p.length) h += '<ul class="dep">'+n.p.map(function(p){
+      return typeof p==='number' && SN[String(p)] ? '<li><a class="lnk" data-sgo="'+p+'">'+esc(SN[String(p)].n)+'</a></li>' : '<li><code>'+esc(String(p))+'</code> <span class="sub2">Mathlib or unresolved</span></li>';
+    }).join('')+'</ul>'; else h += '<div class="empty">no parents</div>';
+    var kids = sKids[id] || [];
+    h += '<h3>Extended by</h3>';
+    h += kids.length ? '<ul class="dep">'+kids.map(function(k){ return '<li><a class="lnk" data-sgo="'+k+'">'+esc(SN[String(k)].n)+'</a></li>'; }).join('')+'</ul>' : '<div class="empty">nothing here extends it</div>';
+    sdet.innerHTML = h;
+  }
+  stree.addEventListener('click', function(e){
+    var r = e.target.closest('.row'); if (!r) return;
+    var id = +r.dataset.id, key = r.dataset.key;
+    if (sKids[id] && !key.startsWith('x')){
+      if (e.target.classList.contains('tog') || sSelKey===key) sOpen[key] = !sOpen[key]; else sOpen[key] = true;
+    }
+    sSelKey = key; sQuery = key.startsWith('x') ? sQuery : sQuery; renderStructs(); sDetail(id);
+  });
+  sdet.addEventListener('click', function(e){
+    var g = e.target.closest('[data-sgo]'); if (g){ sQuery=''; qEl.value=''; var id=+g.dataset.sgo; sSelKey=String(id); renderStructs(); sDetail(id); return; }
+    var f = e.target.closest('[data-folder]'); if (f) RH.selectFolder(f.dataset.folder);
+  });
+
+  // ---------------------------------------------------------------- shared controls
+  var timer;
+  qEl.addEventListener('input', function(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      var q = qEl.value.trim().toLowerCase();
+      if (RH.tab==='route'){
+        if (!q){ rSearch = null; renderRoute(); return; }
+        var hits = [];
+        for (var i=0;i<RN.length;i++) if (RN[i].n.toLowerCase().indexOf(q)!==-1) hits.push(i);
+        hits.sort(function(a,b){ return RN[b].sub-RN[a].sub; });
+        hits = hits.slice(0,150);
+        rSearch = '<div class="empty" style="padding:6px">'+hits.length+' match(es) in the '+RM.embedded.toLocaleString()+' declarations of this view, largest first. Click one to open it in the route.</div>' +
+          hits.map(function(id){ return '<div class="row" data-hit="'+id+'"><span class="kind '+RN[id].k+'">'+RN[id].k+'</span><span class="nm" title="'+esc(RN[id].n)+'">'+esc(RN[id].n)+'</span><span class="meta">Σ'+fmt(RN[id].sub)+'</span></div>'; }).join('');
+        renderRoute();
+      } else if (RH.tab==='structs'){ sQuery = q; renderStructs(); }
+    }, 150);
+  });
+  document.getElementById('collapse').addEventListener('click', function(){
+    if (RH.tab==='route'){ rOpen = {}; R.roots.forEach(function(r){ rOpen[String(r)] = true; }); rSelKey = null; rSearch = null; renderRoute(); rDetail(-1); }
+    else if (RH.tab==='structs'){ sOpen = {}; sSelKey = null; sQuery = ''; renderStructs(); sdet.innerHTML = ''; }
+  });
+
+  R.roots.forEach(function(r){ rOpen[String(r)] = true; });
+  renderRoute(); rDetail(-1);
+  RH.showTab('route');
+})();
+</script>
+</body>
+</html>

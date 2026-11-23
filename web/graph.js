@@ -120,7 +120,7 @@
     }
     return best;
   }
-  function srad0() { return Math.max(MAXR * cam.k, 1.8 + 0.25 * MAXR); }
+  function srad0() { return Math.max(MAXR * cam.k, 2); }
   // edges touching a node (or, if it is expanded, anything inside its subtree)
   function neighborEdges(id) {
     if (id < 0) return { list: [], focus: null };
@@ -173,7 +173,7 @@
     }
     if (dirty) { draw(); dirty = false; }
   }
-  function srad(i) { return Math.max(RAD[i] * cam.k, 1.8 + 0.25 * RAD[i]); }  // dots stay visible when zoomed out
+  function srad(i) { return Math.max(RAD[i] * cam.k, 2); }  // dots stay visible when zoomed out
   function sx(x) { return (x - cam.x) * cam.k + W / 2; }
   function sy(y) { return (y - cam.y) * cam.k + H / 2; }
 
@@ -183,6 +183,7 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.fillStyle = theme.bg; ctx.fillRect(0, 0, W, H);
     var k = cam.k;
+    drawTheoryLabels();   // faint watermark under everything
     // halos of expanded clusters
     ctx.setLineDash([4, 4]); ctx.strokeStyle = theme.mute; ctx.lineWidth = 1; ctx.globalAlpha = 0.55;
     halos.forEach(function (h) {
@@ -228,7 +229,6 @@
     // focus rings
     ring(sel, theme.accent, 2.5); if (hov !== sel) ring(hov, theme.ink, 1.5);
     if (showLabels) drawLabels();
-    drawTheoryLabels();
   }
   function ring(i, col, lw) {
     if (i < 0 || !visSet[i]) return;
@@ -257,6 +257,12 @@
       if (x < -50 || x > W + 50 || y < -20 || y > H + 20) return;
       if (!force && r < 9) return;
       var t = i === MAIN ? 'Main' : NAME[i], tw = ctx.measureText(t).width;
+      if (r >= 26) {   // big bubble: name sits inside it, always readable before it opens
+        var mw = 2 * r - 10; if (tw > mw) { while (t.length > 3 && ctx.measureText(t + '…').width > mw) t = t.slice(0, -1); t += '…'; tw = ctx.measureText(t).width; }
+        placed.push([x - tw / 2 - 2, y - 7, tw + 4, 14]); count++;
+        ctx.lineWidth = 3; ctx.strokeStyle = theme.bg; ctx.strokeText(t, x, y); ctx.fillStyle = theme.ink; ctx.fillText(t, x, y);
+        return;
+      }
       var bx = x - tw / 2 - 2, by = y + Math.max(r, 3) + 3 - 7, bw = tw + 4, bh = 14;
       if (!force) { for (var q = 0; q < placed.length; q++) { var p = placed[q]; if (bx < p[0] + p[2] && bx + bw > p[0] && by < p[1] + p[3] && by + bh > p[1]) return; } }
       placed.push([bx, by, bw, bh]); count++;
@@ -268,13 +274,11 @@
   }
   function drawTheoryLabels() {
     var al = Math.min(1, Math.max(0, (0.9 - cam.k) / 0.5)); if (al <= 0) return;
-    ctx.save(); ctx.globalAlpha = 0.85 * al; ctx.font = '700 15px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.save(); ctx.globalAlpha = 0.28 * al; ctx.font = '800 26px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = theme.ink;
     ROOTS.forEach(function (i) {
       if (i === MAIN) return;
-      var x = sx(X[i]), y = sy(Y[i]); if (x < -80 || x > W + 80 || y < -20 || y > H + 20) return;
-      var w = ctx.measureText(NAME[i]).width;
-      ctx.fillStyle = theme.bg; ctx.globalAlpha = 0.7 * al; ctx.fillRect(x - w / 2 - 4, y - 11, w + 8, 22);
-      ctx.globalAlpha = 0.9 * al; ctx.fillStyle = theme.mute; ctx.fillText(NAME[i], x, y);
+      var x = sx(X[i]), y = sy(Y[i]); if (x < -120 || x > W + 120 || y < -20 || y > H + 20) return;
+      ctx.fillText(NAME[i], x, y);
     });
     ctx.restore();
   }
@@ -321,11 +325,11 @@
     for (var q = 0; q < vis.length && opened < 40; q++) {
       var i = vis[q]; if (!KIDS[i].length || i === MAIN) continue;
       var x = sx(X[i]), y = sy(Y[i]), r = RAD[i] * cam.k;
-      if (r >= 26 && x > -r && x < W + r && y > -r && y < H + r && vis.length < 14000) { expanded[i] = 1; changed = true; opened++; }
+      if (r >= 75 && x > -r && x < W + r && y > -r && y < H + r && vis.length < 14000) { expanded[i] = 1; changed = true; opened++; }
     }
     for (var h = 0; h < halos.length; h++) {
       var ha = halos[h];
-      if (ha.r * cam.k < 18 && !(sel >= 0 && TIN[sel] >= TIN[ha.id] && TIN[sel] < TOUT[ha.id])) { expanded[ha.id] = 0; changed = true; for (var j = 0; j < NN; j++) if (TIN[j] > TIN[ha.id] && TIN[j] < TOUT[ha.id]) expanded[j] = 0; }
+      if (ha.r * cam.k < 60 && !(sel >= 0 && TIN[sel] >= TIN[ha.id] && TIN[sel] < TOUT[ha.id])) { expanded[ha.id] = 0; changed = true; for (var j = 0; j < NN; j++) if (TIN[j] > TIN[ha.id] && TIN[j] < TOUT[ha.id]) expanded[j] = 0; }
     }
     if (changed) { rebuild(); settle(); }
   }
